@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.dialects.mysql import DOUBLE, TEXT
 from datetime import datetime
+import pytz
 import os
 
 Base = declarative_base()
@@ -21,10 +22,12 @@ class DoubleTimestamp(TypeDecorator):
         TypeDecorator.__init__(self, asdecimal=False)
 
     def process_bind_param(self, value, dialect):
+        if value.tzinfo is not None:
+            value = value.replace(tzinfo = pytz.utc).replace(tzinfo = None)
         return (value-datetime(1970, 1, 1)).total_seconds()*1000.
 
     def process_result_value(self, value, dialect):
-        return datetime.utcfromtimestamp(float(value)/1000.)
+        return datetime.utcfromtimestamp(float(value)/1000.).replace(tzinfo = pytz.utc)
 
 class Device(Base):
     __tablename__ = "aware_device"
@@ -73,3 +76,34 @@ class Screen(Base):
 
     def __repr__(self):
         return '<Screen "%d" Device "%s">' % (self._id, self.device_id)
+
+class Accelerometer(Base):
+    __tablename__ = "accelerometer"
+
+    _id = Column(Integer, primary_key=True)
+    timestamp = Column(DoubleTimestamp)
+    device_id = Column(String(150))
+    double_values_0 = Column(DOUBLE(asdecimal=False))
+    double_values_1 = Column(DOUBLE(asdecimal=False))
+    double_values_2 = Column(DOUBLE(asdecimal=False))
+    accuracy = Column(Integer)
+    label = Column(TEXT)
+
+    def __repr__(self):
+        return '<Accelerometer "%d" Device "%s">' % (self._id, self.device_id)
+
+class Processor(Base):
+    __tablename__ = "processor"
+
+    _id = Column(Integer, primary_key=True)
+    timestamp = Column(DoubleTimestamp)
+    device_id = Column(String(150))
+    double_last_user = Column(DOUBLE(asdecimal=False))
+    double_last_system = Column(DOUBLE(asdecimal=False))
+    double_last_idle = Column(DOUBLE(asdecimal=False))
+    double_user_load = Column(DOUBLE(asdecimal=False))
+    double_system_load = Column(DOUBLE(asdecimal=False))
+    double_idle_load = Column(DOUBLE(asdecimal=False))
+
+def __repr__(self):
+    return '<Processor "%d" Device "%s">' % (self._id, self.device_id)
